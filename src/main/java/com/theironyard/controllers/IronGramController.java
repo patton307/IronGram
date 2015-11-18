@@ -18,7 +18,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by landonkail on 11/17/15.
@@ -66,8 +69,9 @@ public class IronGramController {
     }
 
     @RequestMapping("/upload")
-    public Photo upload(HttpSession session, HttpServletResponse response, String receiver, MultipartFile photo) throws Exception {
+    public Photo upload(HttpSession session, HttpServletResponse response, String receiver, MultipartFile photo, int userTime, boolean isPublic) throws Exception {
         String username = (String) session.getAttribute("username");
+
 
         if (username == null) {
             throw new Exception("Not logged in");
@@ -88,11 +92,23 @@ public class IronGramController {
         p.sender = senderUser;
         p.receiver = receiverUser;
         p.filename = photoFile.getName();
+        p.userTime = userTime;
+        p.isPublic = isPublic;
         photos.save(p);
 
         response.sendRedirect("/");
 
         return p;
+    }
+
+    @RequestMapping("/public-photos")
+    public List<Photo> publicPhotos(String username) {
+        User user = users.findOneByUsername(username);
+
+        List<Photo> selectedPhotos = photos.findBySender(user).stream()
+                .filter(p1 -> p1.isPublic)
+                .collect(Collectors.toList());
+        return selectedPhotos;
     }
 
     @RequestMapping("/photos")
@@ -103,8 +119,41 @@ public class IronGramController {
         }
 
         User user = users.findOneByUsername(username);
+        List<Photo> photosList = photos.findByReceiver(user);
+
+        List<Photo> selectedPhotos = photosList.stream()
+                .filter(p1 -> {
+                    if (p1.deleteTime == null) {
+                        p1.deleteTime = LocalDateTime.now().plusSeconds(p1.userTime);
+                        photos.save(p1);
+                    } else if (p1.deleteTime.isBefore(LocalDateTime.now())) {
+                        photos.delete(p1);
+                        File f = new File("public/" + p1.filename);
+                        f.delete();
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        return selectedPhotos;
+    }
+
+        /*
+        for (Photo p : photosList) {
+            if (p.deleteTime == null) {
+                p.deleteTime = LocalDateTime.now().plusSeconds(p.userTime);
+                photos.save(p);
+            } else if (p.deleteTime.isBefore(LocalDateTime.now())) {
+                photos.delete(p);
+                File f = new File("public/" + p.filename);
+                f.delete();
+            }
+        }
 
         return photos.findByReceiver(user);
     }
+    */
+
 
 }
