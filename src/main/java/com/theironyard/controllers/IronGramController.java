@@ -84,6 +84,10 @@ public class IronGramController {
             throw new Exception("Receiver name doesn't exist.");
         }
 
+        if (!photo.getContentType().startsWith("image")) {
+            throw new Exception("Only images are allowed");
+        }
+
         File photoFile = File.createTempFile("photo", photo.getOriginalFilename(), new File("public"));
         FileOutputStream fos = new FileOutputStream(photoFile);
         fos.write(photo.getBytes());
@@ -154,6 +158,24 @@ public class IronGramController {
         return photos.findByReceiver(user);
     }
     */
+
+    // USING THREADS TO CREATE A METHOD YOU WILL CALL TO DELETE THE PHOTO
+    /*
+    public void waitToDelete(Photo photo, int seconds) {
+        Thread t = new Thread(() -> {
+        try {
+            Thread.sleep(seconds * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            photos.delete(photo);
+            File f = new File ("public", photo.filename);
+            f.delete();
+        })
+        t.start();
+    }
+
+     */
 
 
 }
